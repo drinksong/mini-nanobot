@@ -41,6 +41,7 @@ export class FeishuChannel {
   private client: lark.Client;
   private wsClient: lark.WSClient | null = null;
   private running = false;
+  private processedMessageIds: Set<string> = new Set();
 
   constructor(
     private bus: MessageBus,
@@ -68,7 +69,8 @@ export class FeishuChannel {
 
     const eventDispatcher = new lark.EventDispatcher({}).register({
       'im.message.receive_v1': async (data: any) => {
-        await this._handleEvent(data);
+        this._handleEvent(data);
+        return {};
       },
     });
 
@@ -119,6 +121,20 @@ export class FeishuChannel {
         return;
       }
 
+      const messageId = message.message_id;
+      if (this.processedMessageIds.has(messageId)) {
+        return;
+      }
+      this.processedMessageIds.add(messageId);
+      if (this.processedMessageIds.size > 1000) {
+        const arr = Array.from(this.processedMessageIds).slice(0, 500);
+        this.processedMessageIds = new Set(arr);
+      }
+
+      if (sender.sender_type === 'bot') {
+        return;
+      }
+
       const userId = sender.sender_id.open_id;
       const chatId = message.chat_id;
       const content = this._parseMessageContent(message.content);
@@ -130,11 +146,19 @@ export class FeishuChannel {
 
       console.log(`👤 User ${userId} in chat ${chatId}: ${content}`);
 
+      await this._addReaction(messageId, 'THUMBSUP');
+
       await this.bus.publishInbound(createInboundMessage(
         'feishu',
         userId,
         chatId,
-        content
+        content,
+        {
+          metadata: {
+            message_id: messageId,
+            chat_type: message.chat_type,
+          }
+        }
       ));
     } catch (error) {
       console.error('Error in _handleEvent:', error);
@@ -150,6 +174,24 @@ export class FeishuChannel {
       return content;
     } catch {
       return content;
+    }
+  }
+
+  private async _addReaction(messageId: string, emojiType: string): Promise<void> {
+    try {
+      await this.client.im.messageReaction.create({
+        path: {
+          message_id: messageId,
+        },
+        data: {
+          reaction_type: {
+            emoji_type: emojiType,
+          },
+        },
+      });
+      console.log(`✅ Added reaction ${emojiType} to message ${messageId}`);
+    } catch (error) {
+      console.error('Error adding reaction:', error);
     }
   }
 
