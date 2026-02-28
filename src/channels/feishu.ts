@@ -1,4 +1,5 @@
 import * as lark from '@larksuiteoapi/node-sdk';
+import { MessageBus, createInboundMessage, OutboundMessage } from '../bus';
 
 export interface FeishuEvent {
   header: {
@@ -9,23 +10,23 @@ export interface FeishuEvent {
   };
   event: {
     sender: {
-    sender_id: {
-      open_id: string;
-      union_id: string;
-      user_id: string;
+      sender_id: {
+        open_id: string;
+        union_id: string;
+        user_id: string;
+      };
+      sender_type: string;
+      chat_type: string;
     };
-    sender_type: string;
-    chat_type: string;
+    message: {
+      message_id: string;
+      chat_id: string;
+      content: string;
+      msg_type: string;
+      create_time: string;
+      update_time: string;
+    };
   };
-  message: {
-    message_id: string;
-    chat_id: string;
-    content: string;
-    msg_type: string;
-    create_time: string;
-    update_time: string;
-  };
-};
 }
 
 export interface FeishuMessageResponse {
@@ -36,31 +37,113 @@ export interface FeishuMessageResponse {
   };
 }
 
-export type EventHandler = (event: FeishuEvent) => void;
-
-export class FeishuProvider {
+export class FeishuChannel {
   private client: lark.Client;
   private wsClient: lark.WSClient | null = null;
-  private eventHandlers: EventHandler[] = [];
+  private running = false;
 
   constructor(
+    private bus: MessageBus,
     private appId: string,
-    private appSecret: string
+    private appSecret: string,
+    private allowFrom: string[] = []
   ) {
-    // 创建 API 客户端
     this.client = new lark.Client({
       appId: this.appId,
       appSecret: this.appSecret,
     });
   }
 
-  /**
-   * 解析飞书消息内容
-   */
-  parseMessageContent(content: string): string {
+  async start(): Promise<void> {
+    this.running = true;
+    console.log('🚀 Starting Feishu channel...');
+
+    this._startOutboundConsumer();
+
+    this.wsClient = new lark.WSClient({
+      appId: this.appId,
+      appSecret: this.appSecret,
+      loggerLevel: lark.LoggerLevel.info,
+    });
+
+    const eventDispatcher = new lark.EventDispatcher({}).register({
+      'im.message.receive_v1': async (data: any) => {
+        await this._handleEvent(data);
+      },
+    });
+
+    this.wsClient.start({
+      eventDispatcher,
+    });
+
+    console.log('✅ Feishu WebSocket client started');
+  }
+
+  stop(): void {
+    this.running = false;
+    if (this.wsClient) {
+      this.wsClient = null;
+      console.log('🛑 Feishu WebSocket client stopped');
+    }
+  }
+
+  private async _startOutboundConsumer(): Promise<void> {
+    while (this.running) {
+      try {
+        const msg = await this.bus.consumeOutbound();
+        if (msg && msg.channel === 'feishu') {
+          await this._sendMessage(msg.chatId, msg.content);
+        }
+      } catch (error) {
+        console.error('Error consuming outbound message:', error);
+      }
+    }
+  }
+
+  private isAllowed(senderId: string): boolean {
+    if (this.allowFrom.length === 0) {
+      return true;
+    }
+    return this.allowFrom.includes(senderId);
+  }
+
+  private async _handleEvent(event: any): Promise<void> {
+    try {
+      if (event.event_type !== 'im.message.receive_v1') {
+        return;
+      }
+
+      const { sender, message } = event;
+
+      if (message.message_type !== 'text') {
+        return;
+      }
+
+      const userId = sender.sender_id.open_id;
+      const chatId = message.chat_id;
+      const content = this._parseMessageContent(message.content);
+
+      if (!this.isAllowed(userId)) {
+        console.warn(`Access denied for sender ${userId} on channel feishu`);
+        return;
+      }
+
+      console.log(`👤 User ${userId} in chat ${chatId}: ${content}`);
+
+      await this.bus.publishInbound(createInboundMessage(
+        'feishu',
+        userId,
+        chatId,
+        content
+      ));
+    } catch (error) {
+      console.error('Error in _handleEvent:', error);
+    }
+  }
+
+  private _parseMessageContent(content: string): string {
     try {
       const parsed = JSON.parse(content);
-      // 文本消息格式: {"text":"内容"}
       if (parsed.text) {
         return parsed.text;
       }
@@ -70,10 +153,7 @@ export class FeishuProvider {
     }
   }
 
-  /**
-   * 发送文本消息
-   */
-  async sendMessage(chatId: string, content: string): Promise<FeishuMessageResponse> {
+  private async _sendMessage(chatId: string, content: string): Promise<void> {
     const res = await this.client.im.message.create({
       params: {
         receive_id_type: 'chat_id',
@@ -85,196 +165,14 @@ export class FeishuProvider {
       },
     });
 
-    return {
-      code: res.code ?? 0,
-      msg: res.msg ?? '',
-      data: res.data?.message_id ? { message_id: res.data.message_id } : undefined,
-    };
-  }
-
-  /**
-   * 发送富文本消息（支持 Markdown）
-   */
-  async sendMarkdownMessage(chatId: string, content: string): Promise<FeishuMessageResponse> {
-    const res = await this.client.im.message.create({
-      params: {
-        receive_id_type: 'chat_id',
-      },
-      data: {
-        receive_id: chatId,
-        msg_type: 'post',
-        content: JSON.stringify({
-          post: {
-            zh_cn: {
-              title: 'mini-nanobot 回复',
-              content: [
-                [
-                  {
-                    tag: 'text',
-                    text: content,
-                  },
-                ],
-              ],
-            },
-          },
-        }),
-      },
-    });
-
-    return {
-      code: res.code ?? 0,
-      msg: res.msg ?? '',
-      data: res.data?.message_id ? { message_id: res.data.message_id } : undefined,
-    };
-  }
-
-  /**
-   * 注册事件处理器
-   */
-  onEvent(handler: EventHandler): void {
-    this.eventHandlers.push(handler);
-  }
-
-  /**
-   * 启动长连接
-   * 使用官方 SDK 的 WSClient
-   */
-  async startLongConnection(): Promise<void> {
-    console.log('🚀 Starting Feishu WebSocket long connection...');
-
-    // 创建 WebSocket 客户端
-    this.wsClient = new lark.WSClient({
-      appId: this.appId,
-      appSecret: this.appSecret,
-      loggerLevel: lark.LoggerLevel.info,
-    });
-
-    // 创建事件分发器
-    const eventDispatcher = new lark.EventDispatcher({}).register({
-      'im.message.receive_v1': async (data: any) => {
-        console.log('📨 Received message event');
-        console.log('📨 Event data:', JSON.stringify(data, null, 2).substring(0, 500));
-        
-        // SDK 返回的数据结构可能不同，直接使用原始数据
-        // 触发所有事件处理器
-        for (const handler of this.eventHandlers) {
-          handler(data);
-        }
-      },
-    });
-
-    // 启动长连接
-    this.wsClient.start({
-      eventDispatcher,
-    });
-
-    console.log('✅ Feishu WebSocket client started');
-  }
-
-  /**
-   * 停止长连接
-   */
-  stopLongConnection(): void {
-    if (this.wsClient) {
-      // WSClient 可能没有 stop 方法，直接置空
-      this.wsClient = null;
-      console.log('🛑 Feishu WebSocket client stopped');
-    }
-  }
-}
-
-/**
- * 飞书交互渠道
- */
-export class FeishuChannel {
-  private agent: any;
-  private feishu: FeishuProvider;
-
-  constructor(agent: any, appId: string, appSecret: string) {
-    this.agent = agent;
-    this.feishu = new FeishuProvider(appId, appSecret);
-  }
-
-  /**
-   * 启动飞书渠道
-   */
-  async start(): Promise<void> {
-    console.log('🚀 Starting Feishu channel...');
-
-    // 注册事件处理器
-    this.feishu.onEvent(async (event: any) => {
-      await this._handleEvent(event);
-    });
-
-    // 启动长连接
-    await this.feishu.startLongConnection();
-  }
-
-  /**
-   * 处理飞事件
-   */
-  private async _handleEvent(event: any): Promise<void> {
-    try {
-      console.log('📨 Full event structure:', JSON.stringify(event, null, 2).substring(0, 1000));
-      
-      // SDK 返回的数据结构是扁平的：
-      // {
-      //   schema: "2.0",
-      //   event_id: "...",
-      //   event_type: "im.message.receive_v1",
-      //   sender: { sender_id: {...}, ... },
-      //   message: { chat_id, message_type, content, ... }
-      // }
-      
-      // 只处理接收消息事件
-      if (event.event_type !== 'im.message.receive_v1') {
-        console.log(`⏭️  Skipping event: ${event.event_type}`);
-        return;
-      }
-
-      const { sender, message } = event;
-      
-      // 只处理文本消息（注意：SDK 返回的是 message_type，不是 msg_type）
-      if (message.message_type !== 'text') {
-        console.log(`⏭️  Skipping non-text message: ${message.message_type}`);
-        return;
-      }
-
-      const userId = sender.sender_id.open_id;
-      const chatId = message.chat_id;
-      const content = this.feishu.parseMessageContent(message.content);
-
-      console.log(`👤 User ${userId} in chat ${chatId}: ${content}`);
-
-      // 异步处理消息
-      this._handleMessage(userId, chatId, content).catch((error) => {
-        console.error('Error handling message:', error);
-      });
-    } catch (error) {
-      console.error('Error in _handleEvent:', error);
-    }
-  }
-
-  /**
-   * 处理用户消息
-   */
-  private async _handleMessage(userId: string, chatId: string, content: string): Promise<void> {
-    console.log(`Processing message from ${userId} in chat ${chatId}: ${content}`);
-
-    try {
-      // 调用 Agent 处理消息
-      const response = await this.agent.processMessage(content, {
-        userId,
-        chatId,
-        channel: 'feishu',
-      });
-
-      // 发送回复
-      await this.feishu.sendMessage(chatId, response);
+    if (res.code !== 0) {
+      console.error(`Failed to send message: ${res.msg}`);
+    } else {
       console.log(`✅ Sent response to ${chatId}`);
-    } catch (error) {
-      console.error('Error processing message:', error);
-      await this.feishu.sendMessage(chatId, `❌ 处理消息时出错: ${error}`);
     }
+  }
+
+  get isRunning(): boolean {
+    return this.running;
   }
 }
