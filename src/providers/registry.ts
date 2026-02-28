@@ -13,6 +13,7 @@ export interface ProviderSpec {
   defaultApiBase: string;             // fallback base URL
   litellmPrefix: string;              // prefix for model name, e.g. "volcengine"
   skipPrefixes: string[];             // don't prefix if model already starts with these
+  skipPrefix?: boolean;               // don't add prefix at all
 
   // detection
   isGateway: boolean;                 // routes any model (OpenRouter, VolcEngine)
@@ -43,9 +44,10 @@ export const PROVIDERS: ProviderSpec[] = [
     keywords: ["volcengine", "volces", "ark"],
     envKey: "VOLCENGINE_API_KEY",
     displayName: "VolcEngine",
-    defaultApiBase: "https://ark.cn-beijing.volces.com/api/coding/v3",
+    defaultApiBase: "https://ark.cn-beijing.volces.com/api/v3",
     litellmPrefix: "volcengine",
     skipPrefixes: [],
+    skipPrefix: true,
     isGateway: true,
     detectByKeyPrefix: "",
     detectByBaseKeyword: "volces",
@@ -212,18 +214,25 @@ export function resolveModel(model: string, apiKey?: string, apiBase?: string, p
   // Priority 1: provider_name (from config) is primary signal
   if (providerName) {
     const spec = findByName(providerName);
-    if (spec && spec.litellmPrefix) {
+    if (spec && spec.litellmPrefix && !spec.skipPrefix) {
       // Strip existing prefix if needed
       const bareModel = model.split('/').pop() || model;
       if (!model.startsWith(`${spec.litellmPrefix}/`)) {
         return `${spec.litellmPrefix}/${bareModel}`;
       }
+    } else if (spec && spec.skipPrefix) {
+      // Skip prefix entirely
+      return model.split('/').pop() || model;
     }
   }
 
   // Priority 2: Check for gateway
   const gateway = findGateway(apiKey, apiBase);
   if (gateway) {
+    if (gateway.skipPrefix) {
+      // Skip prefix entirely
+      return model.split('/').pop() || model;
+    }
     if (!model.startsWith(`${gateway.litellmPrefix}/`)) {
       return `${gateway.litellmPrefix}/${model}`;
     }
@@ -232,7 +241,7 @@ export function resolveModel(model: string, apiKey?: string, apiBase?: string, p
 
   // Priority 3: Check for standard provider
   const spec = findByModel(model);
-  if (spec && spec.litellmPrefix) {
+  if (spec && spec.litellmPrefix && !spec.skipPrefix) {
     // Skip if already prefixed
     if (spec.skipPrefixes.some(prefix => model.startsWith(prefix))) {
       return model;

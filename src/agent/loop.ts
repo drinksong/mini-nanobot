@@ -9,6 +9,8 @@ export class AgentLoop {
   private maxIterations = 40;
   private memoryWindow = 100;
   private history: ChatMessage[] = [];
+  private context: ContextBuilder;
+  private tools: ToolRegistry;
 
   constructor(
     private provider: LLMProvider,
@@ -19,9 +21,6 @@ export class AgentLoop {
     this.tools = new ToolRegistry();
     this._registerDefaultTools();
   }
-
-  private context: ContextBuilder;
-  private tools: ToolRegistry;
 
   private _registerDefaultTools(): void {
     // File system tools

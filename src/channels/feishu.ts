@@ -190,9 +190,9 @@ export class FeishuChannel {
   private agent: any;
   private feishu: FeishuProvider;
 
-  constructor(agent: any, feishu: FeishuProvider) {
+  constructor(agent: any, appId: string, appSecret: string) {
     this.agent = agent;
-    this.feishu = feishu;
+    this.feishu = new FeishuProvider(appId, appSecret);
   }
 
   /**

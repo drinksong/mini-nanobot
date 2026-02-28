@@ -3,10 +3,11 @@ import { findByModel, findGateway, findByName, resolveModel, ProviderSpec } from
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content?: string;
+  content?: string | null;
   tool_calls?: any[];
   tool_call_id?: string;
   name?: string;
+  reasoning_content?: string;
 }
 
 export interface ChatResponse {
