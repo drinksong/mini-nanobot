@@ -31,4 +31,4 @@ logs/
 # TypeScript
 *.tsbuildinfo
 
-.docs
+docs
