@@ -1,8 +1,7 @@
 import * as readline from 'readline';
-import { AgentLoop } from '../agent/loop';
 
 export class CLIChannel {
-  constructor(private agent: AgentLoop) {}
+  constructor(private agent: any) {}
 
   async start(): Promise<void> {
     const rl = readline.createInterface({

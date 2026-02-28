@@ -1,9 +1,9 @@
 import { ContextBuilder } from './context';
-import { ToolRegistry } from '../tools/registry';
-import { LLMProvider, ChatMessage, ChatResponse } from '../providers/openrouter';
-import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool, ExecTool } from '../tools/filesystem';
-import { WebSearchTool } from '../tools/web_search';
-import { MessageTool } from '../tools/message';
+import { ToolRegistry } from './tools/registry';
+import { LLMProvider, ChatMessage, ChatResponse } from '../providers/llm';
+import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool, ExecTool } from './tools/filesystem';
+import { WebSearchTool } from './tools/web_search';
+import { MessageTool } from './tools/message';
 
 export class AgentLoop {
   private maxIterations = 40;

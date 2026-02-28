@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ChatMessage } from '../providers/openrouter';
+import { ChatMessage } from '../providers/llm';
 
 export class ContextBuilder {
   constructor(private workspace: string) {}
