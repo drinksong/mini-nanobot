@@ -27,9 +27,9 @@ export class LLMProvider {
   async chat({
     messages,
     tools = [],
-    model = 'anthropic/claude-3.5-sonnet',
+    model = process.env.LLM_MODEL || 'google/gemma-3-4b-it:free', // 默认使用免费模型
     temperature = 0.1,
-    max_tokens = 1024,
+    max_tokens = 512, // 降低到 512 以节省额度
   }: {
     messages: ChatMessage[];
     tools?: any[];

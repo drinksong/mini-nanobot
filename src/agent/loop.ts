@@ -1,7 +1,9 @@
 import { ContextBuilder } from './context';
 import { ToolRegistry } from '../tools/registry';
 import { LLMProvider, ChatMessage, ChatResponse } from '../providers/openrouter';
-import { ReadFileTool, WriteFileTool, EditFileTool } from '../tools/filesystem';
+import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool, ExecTool } from '../tools/filesystem';
+import { WebSearchTool } from '../tools/web_search';
+import { MessageTool } from '../tools/message';
 
 export class AgentLoop {
   private maxIterations = 40;
@@ -22,9 +24,20 @@ export class AgentLoop {
   private tools: ToolRegistry;
 
   private _registerDefaultTools(): void {
+    // File system tools
     this.tools.register(new ReadFileTool(this.workspace));
     this.tools.register(new WriteFileTool(this.workspace));
     this.tools.register(new EditFileTool(this.workspace));
+    this.tools.register(new ListDirTool(this.workspace));
+    
+    // System tools
+    this.tools.register(new ExecTool(this.workspace));
+    
+    // Network tools
+    this.tools.register(new WebSearchTool());
+    
+    // Communication tools
+    this.tools.register(new MessageTool());
   }
 
   async processMessage(message: string): Promise<string> {

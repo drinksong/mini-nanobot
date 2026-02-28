@@ -1,6 +1,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { exec as execCmd } from 'child_process';
+import { promisify } from 'util';
 import { Tool, ToolParams } from './base';
+
+const execAsync = promisify(execCmd);
 
 export class ReadFileTool extends Tool {
   constructor(private workspace: string = process.cwd()) {
@@ -95,6 +99,74 @@ export class EditFileTool extends Tool {
       return `Successfully replaced text in ${resolvedPath}`;
     } catch (e) {
       return `Error editing file: ${e}`;
+    }
+  }
+}
+
+export class ListDirTool extends Tool {
+  constructor(private workspace: string = process.cwd()) {
+    super();
+  }
+
+  get name() { return 'list_dir'; }
+  get description() { return 'List the contents of a directory.'; }
+  get parameters() {
+    return {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The directory path to list' }
+      },
+      required: ['path']
+    };
+  }
+
+  async execute({ path: dirPath }: ToolParams): Promise<string> {
+    try {
+      const resolvedPath = path.resolve(this.workspace, dirPath);
+      const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
+      
+      const result = entries.map(entry => {
+        const type = entry.isDirectory() ? '[DIR]' : '[FILE]';
+        return `${type} ${entry.name}`;
+      }).join('\n');
+      
+      return result || '(empty directory)';
+    } catch (e) {
+      return `Error listing directory: ${e}`;
+    }
+  }
+}
+
+export class ExecTool extends Tool {
+  constructor(private workspace: string = process.cwd()) {
+    super();
+  }
+
+  get name() { return 'exec'; }
+  get description() { return 'Execute a shell command and return its output. Use with caution.'; }
+  get parameters() {
+    return {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: 'The shell command to execute' },
+        working_dir: { type: 'string', description: 'Optional working directory for the command' }
+      },
+      required: ['command']
+    };
+  }
+
+  async execute({ command, working_dir }: ToolParams): Promise<string> {
+    try {
+      const cwd = working_dir ? path.resolve(this.workspace, working_dir) : this.workspace;
+      const { stdout, stderr } = await execAsync(command, { cwd, timeout: 60000 });
+      
+      let result = '';
+      if (stdout) result += stdout;
+      if (stderr) result += `\n[stderr]\n${stderr}`;
+      
+      return result || '(no output)';
+    } catch (e: any) {
+      return `Error executing command: ${e.message}`;
     }
   }
 }
