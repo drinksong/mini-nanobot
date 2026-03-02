@@ -91,35 +91,55 @@ $ npm start
 
 ## 🏗️ 架构设计
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        octobot                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │   CLI 通道   │    │  飞书通道   │    │  其他通道   │         │
-│  └──────┬──────┘    └──────┬──────┘    └─────────────┘         │
-│         │                   │                                   │
-│         └───────────┬───────┘                                   │
-│                     ▼                                           │
-│            ┌─────────────────┐                                  │
-│            │   MessageBus    │  ← 消息总线（生产者-消费者）      │
-│            │   （消息队列）   │                                  │
-│            └────────┬────────┘                                  │
-│                     │                                           │
-│                     ▼                                           │
-│            ┌─────────────────┐                                  │
-│            │    AgentLoop    │  ← 核心处理逻辑                  │
-│            └────────┬────────┘                                  │
-│                     │                                           │
-│         ┌───────────┼───────────┐                               │
-│         ▼           ▼           ▼                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                        │
-│  │ Session  │ │ Memory   │ │ Skills   │  ← 三大子系统           │
-│  │ Manager  │ │ Manager  │ │ Manager  │                        │
-│  └──────────┘ └──────────┘ └──────────┘                        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph octobot["🐙 octobot"]
+        direction TB
+        
+        subgraph channels["通道层"]
+            CLI[CLI 通道]
+            Feishu[飞书通道]
+            Others[其他通道...]
+        end
+        
+        subgraph core["核心层"]
+            Bus["MessageBus<br/>消息队列"]
+            Agent["AgentLoop<br/>核心处理逻辑"]
+        end
+        
+        subgraph managers["管理器层"]
+            Session["Session Manager<br/>会话管理"]
+            Memory["Memory Manager<br/>记忆系统"]
+            Skills["Skills Manager<br/>技能系统"]
+        end
+        
+        subgraph infra["基础设施"]
+            LLM["LLM Provider<br/>多模型支持"]
+            Tools["Tool Registry<br/>工具注册表"]
+            Config["Config System<br/>配置系统"]
+        end
+    end
+    
+    CLI --> Bus
+    Feishu --> Bus
+    Others --> Bus
+    
+    Bus -->|生产者-消费者模式| Agent
+    
+    Agent --> Session
+    Agent --> Memory
+    Agent --> Skills
+    
+    Agent --> LLM
+    Agent --> Tools
+    
+    style octobot fill:#1a1a2e,stroke:#16213e,stroke-width:3px
+    style Bus fill:#0f3460,stroke:#e94560,stroke-width:2px
+    style Agent fill:#533483,stroke:#e94560,stroke-width:2px
+    style channels fill:#16213e,stroke:#0f3460
+    style core fill:#16213e,stroke:#0f3460
+    style managers fill:#16213e,stroke:#0f3460
+    style infra fill:#16213e,stroke:#0f3460
 ```
 
 ### 核心模块
