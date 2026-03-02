@@ -1,6 +1,6 @@
 /**
  * Configuration loading utilities.
- * Reference: /Users/bytedance/github/nanobot/nanobot/config/loader.py
+ * Reference: /Users/bytedance/github/octobot/octobot/config/loader.py
  */
 
 import * as fs from 'fs/promises';
@@ -9,7 +9,7 @@ import * as os from 'os';
 import { Config, createDefaultConfig } from './schema';
 
 export function getConfigPath(): string {
-  return path.join(os.homedir(), '.nanobot', 'config.json');
+  return path.join(os.homedir(), '.octobot', 'config.json');
 }
 
 export async function loadConfig(configPath?: string): Promise<Config> {

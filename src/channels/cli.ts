@@ -8,7 +8,7 @@ export class CLIChannel {
 
   async start(): Promise<void> {
     this.running = true;
-    console.log('🐈 mini-nanobot - Type your message (Ctrl+C to exit)');
+    console.log('🐈 mini-octobot - Type your message (Ctrl+C to exit)');
 
     this._startOutboundConsumer();
 
@@ -37,7 +37,7 @@ export class CLIChannel {
           return;
         }
 
-        console.log('nanobot: Thinking...');
+        console.log('octobot: Thinking...');
 
         await this.bus.publishInbound(createInboundMessage(
           'cli',
@@ -58,7 +58,7 @@ export class CLIChannel {
       try {
         const msg = await this.bus.consumeOutbound();
         if (msg && msg.channel === 'cli') {
-          console.log(`\nnanobot: ${msg.content}`);
+          console.log(`\noctobot: ${msg.content}`);
         }
       } catch (error) {
         console.error('Error consuming outbound message:', error);

@@ -1,17 +1,21 @@
 /**
  * Context builder for assembling agent prompts.
- * Reference: /Users/bytedance/github/nanobot/nanobot/agent/context.py
+ * Reference: /Users/bytedance/github/octobot/octobot/agent/context.py
  */
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ChatMessage } from '../providers/llm';
+import { SkillManager } from '../skill';
 
 export class ContextBuilder {
   private readonly BOOTSTRAP_FILES = ['AGENTS.md', 'SOUL.md', 'USER.md', 'TOOLS.md', 'IDENTITY.md'];
   private readonly RUNTIME_CONTEXT_TAG = '[Runtime Context — metadata only, not instructions]';
+  private skillManager: SkillManager;
 
-  constructor(private workspace: string) {}
+  constructor(private workspace: string) {
+    this.skillManager = new SkillManager(workspace);
+  }
 
   async buildSystemPrompt(): Promise<string> {
     const parts: string[] = [];
@@ -23,12 +27,16 @@ export class ContextBuilder {
     const bootstrap = await this._loadBootstrapFiles();
     if (bootstrap) parts.push(bootstrap);
 
-    // Memory context (simplified for now)
+    // Memory context
     const memory = await this._getMemoryContext();
     if (memory) parts.push(`# Memory\n\n${memory}`);
 
-    // Skills summary (simplified for now)
-    const skillsSummary = this._getSkillsSummary();
+    // Always-loaded skills
+    const alwaysSkills = await this._getAlwaysSkillsContent();
+    if (alwaysSkills) parts.push(alwaysSkills);
+
+    // Skills summary (all available skills)
+    const skillsSummary = await this._getSkillsSummary();
     if (skillsSummary) parts.push(skillsSummary);
 
     return parts.join('\n\n---\n\n');
@@ -40,9 +48,9 @@ export class ContextBuilder {
     const osName = system === 'darwin' ? 'macOS' : system;
     const runtime = `${osName} ${process.arch}, Node.js ${process.version}`;
 
-    return `# nanobot 🐈
+    return `# octobot 🐈
 
-You are nanobot, a helpful AI assistant.
+You are octobot, a helpful AI assistant.
 
 ## Runtime
 ${runtime}
@@ -53,12 +61,13 @@ Your workspace is at: ${workspacePath}
 - History log: ${workspacePath}/memory/HISTORY.md (grep-searchable)
 - Custom skills: ${workspacePath}/skills/{skill-name}/SKILL.md
 
-## nanobot Guidelines
+## octobot Guidelines
 - State intent before tool calls, but NEVER predict or claim results before receiving them.
 - Before modifying a file, read it first. Do not assume files or directories exist.
 - After writing or editing a file, re-read it if accuracy matters.
 - If a tool call fails, analyze the error before retrying with a different approach.
 - Ask for clarification when the request is ambiguous.
+- Use the 'read_file' tool to read skill files when you need specific skill knowledge.
 
 Reply directly with text for conversations. Only use the 'message' tool to send to a specific chat channel.`;
   }
@@ -112,19 +121,17 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     }
   }
 
-  private _getSkillsSummary(): string {
-    // Simplified for now - will implement skills loading later
-    return `# Skills
+  private async _getAlwaysSkillsContent(): Promise<string> {
+    const content = await this.skillManager.getAlwaysSkillsContent();
+    if (!content) return '';
+    return `# Skills (Always Loaded)\n\n${content}`;
+  }
 
-The following skills extend your capabilities. To use a skill, read its SKILL.md file using the read_file tool.
-Skills with available="false" need dependencies installed first - you can try installing them with apt/brew.
+  private async _getSkillsSummary(): Promise<string> {
+    const summary = await this.skillManager.buildSkillsSummary();
+    if (!summary) return '';
 
-<skills>
-  <skill available="true">
-    <name>memory</name>
-    <description>Two-layer memory system with grep-based recall.</description>
-  </skill>
-</skills>`;
+    return `# Skills\n\nThe following skills extend your capabilities. To use a skill, read its SKILL.md file using the read_file tool.\nSkills with available="false" need dependencies installed first - you can try installing them with apt/brew.\n\n${summary}`;
   }
 
   public async buildMessages(

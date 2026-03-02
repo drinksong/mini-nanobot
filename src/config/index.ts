@@ -1,6 +1,6 @@
 /**
  * Configuration module.
- * Reference: /Users/bytedance/github/nanobot/nanobot/config/
+ * Reference: /Users/bytedance/github/octobot/octobot/config/
  */
 
 export * from './schema';
