@@ -85,6 +85,12 @@ export class AgentLoop {
       : msg.content;
     console.log(`📩 Processing message from ${msg.channel}:${msg.senderId}: ${preview}`);
 
+    // 处理特殊命令
+    const commandResult = await this._handleCommand(msg);
+    if (commandResult) {
+      return commandResult;
+    }
+
     const sessionKey = msg.sessionKey;
     const session = await this.sessions.getOrCreate(sessionKey);
 
@@ -237,5 +243,96 @@ export class AgentLoop {
 
     const response = await this._processMessage(msg);
     return response?.content || '';
+  }
+
+  /**
+   * 处理特殊命令（以 / 开头）
+   */
+  private async _handleCommand(msg: InboundMessage): Promise<OutboundMessage | null> {
+    const content = msg.content.trim();
+    
+    // 只处理以 / 开头的命令
+    if (!content.startsWith('/')) {
+      return null;
+    }
+
+    const parts = content.split(' ');
+    const command = parts[0].toLowerCase();
+
+    switch (command) {
+      case '/new':
+        return this._handleNewCommand(msg);
+      case '/stop':
+        return this._handleStopCommand(msg);
+      case '/help':
+        return this._handleHelpCommand(msg);
+      default:
+        return createOutboundMessage(
+          msg.channel,
+          msg.chatId,
+          `Unknown command: ${command}\nType /help for available commands.`
+        );
+    }
+  }
+
+  /**
+   * /new - 创建新会话
+   */
+  private async _handleNewCommand(msg: InboundMessage): Promise<OutboundMessage> {
+    // 生成新的会话 key
+    const timestamp = Date.now();
+    const newSessionKey = `${msg.channel}:${msg.senderId}:${timestamp}`;
+    
+    // 创建新会话
+    await this.sessions.getOrCreate(newSessionKey);
+    
+    return createOutboundMessage(
+      msg.channel,
+      msg.chatId,
+      `🆕 New session started: ${newSessionKey}\nYou can now start a fresh conversation.`
+    );
+  }
+
+  /**
+   * /stop - 停止当前任务（预留）
+   */
+  private async _handleStopCommand(msg: InboundMessage): Promise<OutboundMessage> {
+    // TODO: 实现任务取消功能
+    return createOutboundMessage(
+      msg.channel,
+      msg.chatId,
+      '⏹️ Stop command received. Task cancellation will be implemented in a future update.'
+    );
+  }
+
+  /**
+   * /help - 显示帮助信息
+   */
+  private async _handleHelpCommand(msg: InboundMessage): Promise<OutboundMessage> {
+    const helpText = `🐙 **octobot Commands**
+
+**Special Commands:**
+- \`/new\` - Start a new session (clear conversation history)
+- \`/stop\` - Stop the current task (coming soon)
+- \`/help\` - Show this help message
+
+**Available Tools:**
+- \`read_file\` - Read file contents
+- \`write_file\` - Write to a file
+- \`edit_file\` - Edit file contents
+- \`list_dir\` - List directory contents
+- \`exec\` - Execute shell commands
+- \`web_search\` - Search the web
+
+**Tips:**
+- I can remember our conversations using the memory system
+- Use skills to extend my capabilities
+- Type naturally and I'll use tools when needed`;
+
+    return createOutboundMessage(
+      msg.channel,
+      msg.chatId,
+      helpText
+    );
   }
 }
