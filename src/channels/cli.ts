@@ -8,7 +8,7 @@ export class CLIChannel {
 
   async start(): Promise<void> {
     this.running = true;
-    console.log('🐈 mini-octobot - Type your message (Ctrl+C to exit)');
+    console.log('🐙 octobot - Type your message (Ctrl+C to exit)');
 
     this._startOutboundConsumer();
 
