@@ -5,11 +5,13 @@ import { ReadFileTool, WriteFileTool, EditFileTool, ListDirTool, ExecTool } from
 import { WebSearchTool } from './tools/web_search';
 import { MessageTool } from './tools/message';
 import { SpawnTool } from './tools/spawn';
+import { CronTool } from './tools/cron';
 import { MessageBus, InboundMessage, OutboundMessage, createOutboundMessage } from '../bus';
 import { SessionManager, Session, SessionMessage, addMessage, getHistory } from '../session';
 import { MemoryManager } from '../memory';
 import { SubagentManager } from './subagent';
 import { HeartbeatService } from '../heartbeat/service';
+import { CronService } from '../cron/service';
 
 export class AgentLoop {
   private maxIterations = 40;
@@ -22,6 +24,8 @@ export class AgentLoop {
   private subagents: SubagentManager;
   private spawnTool: SpawnTool;
   private heartbeat: HeartbeatService;
+  private cron: CronService;
+  private cronTool: CronTool;
 
   constructor(
     private bus: MessageBus,
@@ -41,6 +45,11 @@ export class AgentLoop {
       model
     );
     this.spawnTool = new SpawnTool(this.subagents);
+    this.cron = new CronService(
+      `${workspace}/cron.json`,
+      this._executeCronJob.bind(this)
+    );
+    this.cronTool = new CronTool(this.cron);
     this.heartbeat = new HeartbeatService(
       workspace,
       provider,
@@ -64,13 +73,15 @@ export class AgentLoop {
     this.tools.register(new WebSearchTool());
     this.tools.register(new MessageTool());
     this.tools.register(this.spawnTool);
+    this.tools.register(this.cronTool);
   }
 
   async run(): Promise<void> {
     this.running = true;
     console.log('🤖 Agent loop started');
 
-    // Start heartbeat service
+    // Start services
+    this.cron.start();
     this.heartbeat.start();
 
     while (this.running) {
@@ -86,12 +97,14 @@ export class AgentLoop {
       }
     }
 
-    // Stop heartbeat service
+    // Stop services
+    this.cron.stop();
     this.heartbeat.stop();
   }
 
   stop(): void {
     this.running = false;
+    this.cron.stop();
     this.heartbeat.stop();
     console.log('🤖 Agent loop stopping');
   }
@@ -120,6 +133,7 @@ export class AgentLoop {
 
     // 设置工具上下文
     this.spawnTool.setContext(msg.channel, msg.chatId, msg.sessionKey);
+    this.cronTool.setContext(msg.channel, msg.chatId);
 
     // 处理特殊命令
     const commandResult = await this._handleCommand(msg);
@@ -407,5 +421,41 @@ export class AgentLoop {
     // For now, just log the result
     // In a real implementation, you might send this to a notification channel
     console.log('⏱️ Heartbeat result:', response);
+  }
+
+  /**
+   * Execute a cron job.
+   */
+  private async _executeCronJob(job: import('../cron/types').CronJob): Promise<string | null> {
+    const sessionKey = `cron:${job.id}`;
+    const session = await this.sessions.getOrCreate(sessionKey);
+
+    // Build messages
+    const history = getHistory(session, this.memoryWindow);
+    const historyMessages: ChatMessage[] = history.map(m => ({
+      role: m.role,
+      content: m.content || undefined,
+      tool_calls: m.tool_calls,
+      tool_call_id: m.tool_call_id,
+      name: m.name,
+    } as ChatMessage));
+
+    const initialMessages = await this.context.buildMessages(
+      historyMessages,
+      `Scheduled task: ${job.payload.message}`
+    );
+
+    const { finalContent } = await this._runAgentLoop(initialMessages);
+
+    // Deliver if requested
+    if (job.payload.deliver && job.payload.channel && job.payload.to) {
+      await this.bus.publishOutbound(createOutboundMessage(
+        job.payload.channel,
+        job.payload.to,
+        finalContent || 'Task completed.'
+      ));
+    }
+
+    return finalContent;
   }
 }

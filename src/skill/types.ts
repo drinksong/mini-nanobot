@@ -89,3 +89,16 @@ export const DEFAULT_SKILL_METADATA: SkillMetadata = {
  * 内置技能目录（相对于项目根目录）
  */
 export const BUILTIN_SKILLS_DIR = './skills';
+
+/**
+ * 内置技能列表
+ */
+export const BUILTIN_SKILLS = [
+  'memory',
+  'cron',
+  'github',
+  'skill-creator',
+  'web_search',
+  'weather',
+  'hello-world',
+];

@@ -29,7 +29,8 @@ export class SkillLoader {
   constructor(workspace: string, builtinDir?: string) {
     const expandedWorkspace = this.expandPath(workspace);
     this.workspaceSkillsDir = path.join(expandedWorkspace, 'skills');
-    this.builtinSkillsDir = builtinDir || BUILTIN_SKILLS_DIR;
+    // 内置技能目录：优先使用传入的路径，否则使用相对于项目根目录的路径
+    this.builtinSkillsDir = builtinDir || path.join(process.cwd(), BUILTIN_SKILLS_DIR);
   }
 
   private expandPath(filePath: string): string {
