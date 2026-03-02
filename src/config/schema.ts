@@ -1,6 +1,6 @@
 /**
- * Configuration schema for mini-nanobot.
- * Reference: /Users/bytedance/github/nanobot/nanobot/config/schema.py
+ * Configuration schema for mini-octobot.
+ * Reference: /Users/bytedance/github/octobot/octobot/config/schema.py
  */
 
 export interface ProviderConfig {
@@ -86,7 +86,7 @@ export function createDefaultConfig(): Config {
   return {
     agents: {
       defaults: {
-        workspace: '~/.nanobot/workspace',
+        workspace: '~/.octobot/workspace',
         model: 'anthropic/claude-opus-4-5',
         provider: 'auto',
         max_tokens: 8192,

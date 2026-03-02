@@ -1,6 +1,6 @@
 /**
- * mini-nanobot entry point.
- * Reference: /Users/bytedance/github/nanobot/nanobot/__main__.py
+ * mini-octobot entry point.
+ * Reference: /Users/bytedance/github/octobot/octobot/__main__.py
  */
 
 import dotenv from 'dotenv';
@@ -43,7 +43,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\n🚀 mini-nanobot starting...`);
+  console.log(`\n🚀 mini-octobot starting...`);
   console.log(`📦 Model: ${model}`);
   console.log(`🔑 Provider: ${providerName}`);
   console.log(`📁 Workspace: ${workspace}`);
