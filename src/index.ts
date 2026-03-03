@@ -37,7 +37,7 @@ async function initWorkspace(workspacePath: string): Promise<void> {
 }
 
 async function main() {
-  const config = await loadConfig('./config.json');
+  const config = await loadConfig();
 
   const model = config.agents.defaults.model;
   const providerName = config.agents.defaults.provider;
@@ -98,7 +98,8 @@ async function main() {
     workspace,
     model,
     false, // enableHeartbeat
-    mcpConfigs
+    mcpConfigs,
+    config.tools
   );
 
   const mode = process.env.MODE || 'cli';
