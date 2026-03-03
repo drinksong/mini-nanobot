@@ -93,7 +93,7 @@ export class AgentLoop {
       restrictToWorkspace,
       workingDir: this.workspace
     }));
-    this.tools.register(new WebSearchTool());
+    this.tools.register(new WebSearchTool(this.toolsConfig?.web?.search));
     this.tools.register(new WebFetchTool());
     this.tools.register(new MessageTool());
     this.tools.register(this.spawnTool);
@@ -171,7 +171,9 @@ export class AgentLoop {
     const preview = msg.content.length > 80
       ? msg.content.substring(0, 80) + '...'
       : msg.content;
-    console.log(`📩 Processing message from ${msg.channel}:${msg.senderId}: ${preview}`);
+    const logPrefix = msg.channel === 'cli' ? '\n' : '';
+    
+    console.log(`${logPrefix}📩 Processing message from ${msg.channel}:${msg.senderId}: ${preview}`);
     this.tools.clearExecutionLogs();
 
     // 设置工具上下文
@@ -216,13 +218,18 @@ export class AgentLoop {
     this.abortControllers.set(sessionKey, controller);
 
     try {
-      const { finalContent, allMessages, toolsUsed } = await this._runAgentLoop(initialMessages, controller.signal);
+      const { finalContent, allMessages, toolsUsed } = await this._runAgentLoop(
+        initialMessages,
+        controller.signal,
+        msg.channel,
+        msg.chatId
+      );
 
       const updatedSession = this._saveTurn(session, allMessages, history.length, toolsUsed);
       await this.sessions.save(updatedSession);
 
       const responseContent = finalContent || 'No response';
-      console.log(`📤 Response to ${msg.channel}:${msg.senderId}: ${responseContent.substring(0, 120)}...`);
+      console.log(`${logPrefix}📤 Response to ${msg.channel}:${msg.senderId}: ${responseContent.substring(0, 120)}...`);
 
       const metadata = msg.channel === 'feishu'
         ? {
@@ -333,7 +340,9 @@ export class AgentLoop {
 
   private async _runAgentLoop(
     initialMessages: ChatMessage[],
-    signal?: AbortSignal
+    signal: AbortSignal | undefined,
+    channel: string,
+    chatId: string
   ): Promise<{ finalContent: string | null; allMessages: ChatMessage[]; toolsUsed: string[] }> {
     let messages = [...initialMessages];
     let finalContent: string | null = null;
@@ -375,6 +384,16 @@ export class AgentLoop {
           }
 
           toolsUsed.push(toolCall.name);
+
+          await this.bus.publishOutbound(createOutboundMessage(
+            channel,
+            chatId,
+            `• ${toolCall.name} ${JSON.stringify(toolCall.arguments)}`,
+            {
+              kind: 'tool_call',
+              toolName: toolCall.name,
+            }
+          ));
 
           const result = await this.tools.execute(
             toolCall.name,
@@ -547,7 +566,12 @@ export class AgentLoop {
       `Heartbeat check: ${tasks}`
     );
 
-    const { finalContent } = await this._runAgentLoop(initialMessages);
+    const { finalContent } = await this._runAgentLoop(
+      initialMessages,
+      undefined,
+      'system',
+      'system'
+    );
     return finalContent || 'Heartbeat tasks completed.';
   }
 
@@ -582,7 +606,12 @@ export class AgentLoop {
       `Scheduled task: ${job.payload.message}`
     );
 
-    const { finalContent } = await this._runAgentLoop(initialMessages);
+    const { finalContent } = await this._runAgentLoop(
+      initialMessages,
+      undefined,
+      'system',
+      'system'
+    );
 
     // Deliver if requested
     if (job.payload.deliver && job.payload.channel && job.payload.to) {

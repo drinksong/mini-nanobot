@@ -84,8 +84,8 @@ export class LLMProvider {
     max_tokens?: number;
   }): Promise<ChatResponse> {
     const finalModel = model ? resolveModel(model, this.apiKey, this.apiBase) : this.resolvedModel;
-    
-    console.log(`📤 Sending request to model: ${finalModel}, max_tokens: ${max_tokens}`);
+    const logPrefix = process.env.MODE === 'cli' ? '\n' : '';
+    console.log(`${logPrefix}📤 Sending request to model: ${finalModel}`);
 
     try {
       const response = await this.client.chat.completions.create({
