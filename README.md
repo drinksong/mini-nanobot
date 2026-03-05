@@ -152,6 +152,87 @@ Use tmux to manage terminal sessions...
 - Managers: Session / Memory / Skills
 - Infra: LLM Provider / Tools / Config
 
+### System Overview
+
+```mermaid
+flowchart TB
+  subgraph channels[Channels]
+    CLI[CLI Channel]
+    Feishu[Feishu Channel]
+  end
+
+  subgraph core[Core]
+    Bus[MessageBus]
+    Loop[AgentLoop]
+    Context[ContextBuilder]
+  end
+
+  subgraph managers[Managers]
+    Sessions[SessionManager]
+    Memory[MemoryManager]
+    Skills[SkillManager]
+  end
+
+  subgraph infra[Infra]
+    LLM[LLM Provider]
+    Tools[Tool Registry]
+    MCP[MCP Connector]
+    Config[Config Loader]
+  end
+
+  CLI --> Bus
+  Feishu --> Bus
+  Bus --> Loop
+  Loop --> Context
+  Loop --> Tools
+  Loop --> Sessions
+  Loop --> Memory
+  Loop --> Skills
+  Loop --> LLM
+  Tools --> MCP
+  Config --> Loop
+```
+
+### Message Flow
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Channel
+  participant Bus
+  participant AgentLoop as Agent
+  participant Context
+  participant LLM
+  participant Tools
+
+  User->>Channel: Message
+  Channel->>Bus: InboundMessage
+  Bus->>Agent: consumeInbound()
+  Agent->>Context: buildMessages()
+  Context-->>Agent: system + history + user
+  Agent->>LLM: chat()
+  LLM-->>Agent: response / tool_calls
+  Agent->>Tools: execute tools
+  Tools-->>Agent: tool results
+  Agent->>LLM: follow-up
+  Agent-->>Bus: OutboundMessage
+  Bus-->>Channel: publishOutbound()
+  Channel-->>User: Reply
+```
+
+### Skill Loading
+
+```mermaid
+flowchart TD
+  Build[buildSystemPrompt] --> Always[Always Skills Content]
+  Build --> Summary[Skills Summary]
+  Always --> Cache[SkillManager cache]
+  Summary --> Scan[SkillLoader listSkills]
+  Scan --> Workspace[Workspace skills]
+  Scan --> Builtin[Builtin skills]
+  Summary --> Read[read_file on demand]
+```
+
 ## MCP Integration
 
 ```json
