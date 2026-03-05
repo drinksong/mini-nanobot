@@ -263,6 +263,23 @@ npm run dev:gateway
 
 `dev` 与 `dev:gateway` 会监听 `src` 并在变更时重启。
 
+## 发布
+
+```bash
+# 构建并发布为公开包
+npm run release
+
+# 预览：生成 tar 包以检查内容
+npm run release:dry
+
+# 预发布钩子（发布前自动运行）
+npm run prepublishOnly
+
+# 版本号辅助（同时写入提交信息）
+npm run version:patch  # +0.0.1
+npm run version:minor  # +0.1.0
+npm run version:major  # +1.0.0
+```
 ## 贡献
 
 - 运行 TypeScript 类型检查：`npx tsc --noEmit`

@@ -263,6 +263,23 @@ npm run dev:gateway
 
 `dev` and `dev:gateway` watch `src` and restart on changes.
 
+## Release
+
+```bash
+# Build then publish as a public package
+npm run release
+
+# Dry run: create tarball to inspect package contents
+npm run release:dry
+
+# Pre-publish hook (runs automatically before publish)
+npm run prepublishOnly
+
+# Version helpers (also creates a commit with message)
+npm run version:patch  # 0.0.1 bump
+npm run version:minor  # 0.1.0 bump
+npm run version:major  # 1.0.0 bump
+```
 ## Contributing
 
 - Run TypeScript checks: `npx tsc --noEmit`

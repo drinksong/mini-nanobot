@@ -1,10 +1,10 @@
 {
   "name": "octobot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Modular AI agent framework with CLI and Feishu gateway.",
   "main": "dist/index.js",
   "bin": {
-    "octobot": "dist/cli.js"
+    "octobot": "bin/octobot"
   },
   "scripts": {
     "build": "tsc",
@@ -14,11 +14,29 @@
     "dev:gateway": "nodemon --watch src --ext ts,md --exec \"ts-node src/cli.ts gateway\"",
     "link": "npm link",
     "prepare": "npm run build",
+    "prepublishOnly": "npm run build",
+    "release": "npm run build && npm publish --access public",
+    "release:dry": "npm pack",
+    "version:patch": "npm version patch -m \"chore: release %s\"",
+    "version:minor": "npm version minor -m \"chore: release %s\"",
+    "version:major": "npm version major -m \"chore: release %s\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["ai", "agent", "octobot", "cli", "feishu", "mcp", "typescript"],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "files": ["dist", "bin", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/octobot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/octobot/issues"
+  },
+  "homepage": "https://github.com/yourusername/octobot#readme",
   "dependencies": {
     "@larksuiteoapi/node-sdk": "^1.59.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
