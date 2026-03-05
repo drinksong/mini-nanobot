@@ -31,6 +31,5 @@ logs/
 # TypeScript
 *.tsbuildinfo
 
-docs
-
-config.json
+# docs
+summary-docs

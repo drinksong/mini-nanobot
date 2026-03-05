@@ -4,34 +4,48 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> 一个模块化的 AI Agent 框架，专注多通道交互、会话与记忆管理、技能扩展与工具编排，灵感来自 [nanobot](https://github.com/danielmiessler/nanobot) 🐈。
+English | [简体中文](docs/README.zh.md)
 
-octobot 以 TypeScript 实现，提供可扩展的工具系统、双层记忆架构、技能加载机制与 MCP 集成，适用于构建面向研发流程的智能助手与自动化工作流。
+octobot is a modular AI agent framework built in TypeScript. It focuses on multi-channel interaction, session and memory management, skill expansion, and tool orchestration for engineering workflows. Inspired by [nanobot](https://github.com/danielmiessler/nanobot).
 
-## ✨ 特性
+## Highlights
 
-- 🤖 **多 LLM 支持**：OpenAI、Anthropic、VolcEngine、DeepSeek、Gemini、智谱、Moonshot 等
-- 💬 **多通道交互**：CLI 与飞书机器人（WebSocket）
-- 🧠 **双层记忆**：MEMORY.md（长期事实）+ HISTORY.md（可搜索日志）
-- 📦 **技能系统**：SKILL.md 描述能力与依赖，按需加载
-- 🔗 **MCP 集成**：连接 Model Context Protocol 服务器扩展工具
-- 🚌 **消息总线**：生产者-消费者模型解耦通道与核心循环
-- 🛠️ **工具体系**：文件、执行、搜索、抓取、子代理、定时任务
-- 💾 **会话持久化**：JSONL 存储，支持多会话并发
+- Multi-LLM support (OpenAI, Anthropic, VolcEngine, DeepSeek, Gemini, Zhipu, Moonshot, and more)
+- Multi-channel access (CLI and Feishu bot)
+- Dual memory model (MEMORY.md + HISTORY.md)
+- Skill system based on SKILL.md with dependency checks and on-demand loading
+- MCP integration for Model Context Protocol servers
+- Message bus architecture for decoupled channels and core loop
+- Tooling for files, shell, web search/fetch, subagents, and cron
+- JSONL session persistence with multi-session support
 
-## 🚀 快速开始
+## Quick Start
 
-### 安装
+### Install (recommended)
+
+```bash
+npm i -g octobot
+```
+
+### Install from source
 
 ```bash
 git clone https://github.com/yourusername/octobot.git
 cd octobot
 npm install
+npm run build
+npm link
 ```
 
-### 配置
+### Initialize
 
-配置文件路径：`~/.octobot/config.json`
+```bash
+octobot onboard
+```
+
+### Configure
+
+Config file: `~/.octobot/config.json`
 
 ```json
 {
@@ -75,52 +89,49 @@ npm install
 }
 ```
 
-### 运行
+### Run
 
 ```bash
-# CLI 模式
-MODE=cli npm start
-
-# 飞书机器人模式
-MODE=feishu npm start
+octobot agent
+octobot gateway
 ```
 
-## 📖 使用指南
+## Usage
 
 ### CLI
 
 ```text
-› 你好
-octobot: 你好！有什么需要我协助的吗？
+› hello
+octobot: Hello! How can I help?
 ```
 
-### 飞书
+### Feishu
 
-1. 在飞书开放平台创建机器人
-2. 配置 `channels.feishu.app_id/app_secret`
-3. 运行 `MODE=feishu npm start`
-4. 在飞书中 @ 机器人开始对话
+1. Create a bot in Feishu Open Platform
+2. Configure `channels.feishu.app_id` and `channels.feishu.app_secret`
+3. Run `octobot gateway`
+4. Mention the bot in Feishu to start a conversation
 
-## 🧩 工具与技能
+## Tools and Skills
 
-### 内置工具
+### Built-in Tools
 
-| 工具 | 描述 |
-|------|------|
-| `read_file` | 读取文件内容 |
-| `write_file` | 写入文件 |
-| `edit_file` | 编辑文件 |
-| `list_dir` | 列出目录 |
-| `exec` | 执行命令（安全校验与超时控制） |
-| `web_search` | 网络搜索（Tavily） |
-| `web_fetch` | 网页抓取并抽取可读内容 |
-| `message` | 发送消息 |
-| `spawn` | 子代理任务 |
-| `cron` | 定时任务 |
+| Tool | Description |
+|------|-------------|
+| `read_file` | Read file contents |
+| `write_file` | Write file contents |
+| `edit_file` | Edit file contents |
+| `list_dir` | List directory |
+| `exec` | Execute shell command with safety checks |
+| `web_search` | Web search (Tavily) |
+| `web_fetch` | Fetch and extract web content |
+| `message` | Send a message to a channel |
+| `spawn` | Subagent task |
+| `cron` | Schedule task |
 
-### 技能结构
+### Skill Format
 
-技能目录：`{workspace}/skills/<skill>/SKILL.md`
+Skills live at `{workspace}/skills/<skill>/SKILL.md` and use frontmatter + markdown.
 
 ```markdown
 ---
@@ -134,14 +145,14 @@ metadata: {"octobot": {"requires": {"bins": ["tmux"]}}}
 Use tmux to manage terminal sessions...
 ```
 
-## 🏗️ 架构概览
+## Architecture
 
-- **Channels**：CLI / Feishu
-- **Core**：AgentLoop + MessageBus
-- **Managers**：Session / Memory / Skills
-- **Infra**：LLM Provider / Tools / Config
+- Channels: CLI / Feishu
+- Core: AgentLoop + MessageBus
+- Managers: Session / Memory / Skills
+- Infra: LLM Provider / Tools / Config
 
-## 🔧 MCP 扩展
+## MCP Integration
 
 ```json
 {
@@ -157,21 +168,26 @@ Use tmux to manage terminal sessions...
 }
 ```
 
-可用 MCP 服务器：https://github.com/modelcontextprotocol/servers
+MCP servers: https://github.com/modelcontextprotocol/servers
 
-## 🤝 贡献
+## Development
 
-欢迎提交 Issue / PR。请确保：
+```bash
+npm run build
+npm run start
+```
 
-1. 通过 TypeScript 类型检查：`npx tsc --noEmit`
-2. 遵循既有代码风格
-3. 更新相关文档
+## Contributing
 
-## 📄 许可证
+- Run TypeScript checks: `npx tsc --noEmit`
+- Follow existing code style
+- Update docs for functional changes
+
+## License
 
 [MIT](LICENSE)
 
-## 🙏 致谢
+## Acknowledgements
 
-- 灵感来源：[nanobot](https://github.com/danielmiessler/nanobot) 🐈
-- 飞书 SDK：[@larksuiteoapi/node-sdk](https://github.com/larksuite/node-sdk)
+- Inspired by [nanobot](https://github.com/danielmiessler/nanobot)
+- Feishu SDK: [@larksuiteoapi/node-sdk](https://github.com/larksuite/node-sdk)

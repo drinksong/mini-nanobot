@@ -2,9 +2,16 @@
   "name": "octobot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "octobot": "dist/cli.js"
+  },
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "ts-node src/cli.ts agent",
+    "cli": "ts-node src/cli.ts",
+    "link": "npm link",
+    "prepare": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
